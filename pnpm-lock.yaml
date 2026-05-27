@@ -11,6 +11,12 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.1041.0
         version: 3.1041.0
+      '@expo-google-fonts/great-vibes':
+        specifier: ^0.4.1
+        version: 0.4.1
+      '@expo-google-fonts/playfair-display':
+        specifier: ^0.4.2
+        version: 0.4.2
       '@expo/vector-icons':
         specifier: ^15.0.3
         version: 15.0.3(expo-font@14.0.10(expo@54.0.29)(react-native@0.81.5(@babel/core@7.28.5)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.28.5)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
@@ -1546,6 +1552,12 @@ packages:
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
+  '@expo-google-fonts/great-vibes@0.4.1':
+    resolution: {integrity: sha512-sh3S2Toirw5R2smI5YFHPiUcd1mJkcr5njRBGaFW3ldpP8ayTTm3e/aEJLfZzza/zUyL/F85ahplW8RYZXK/TA==}
+
+  '@expo-google-fonts/playfair-display@0.4.2':
+    resolution: {integrity: sha512-mWhBV59RUjSS3aYpytUb7UyHHTnXcHh7epAn7gq+M4XAEh5PuMKUrP8eiUfkJLb6UwHZCi7EhQpUzxHu5OL96w==}
+
   '@expo/cli@54.0.19':
     resolution: {integrity: sha512-Za+Ena29uYkq2c1Lbh+r3VrooR/mW7c9dahoH4WvL1T9ttbfAeu7sJmCuWZo88bZ4bFsOpE5fYne71DK11iSrQ==}
     hasBin: true
@@ -3022,6 +3034,7 @@ packages:
 
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
+    deprecated: Potential CWE-502 - Update to 1.3.1 or higher
 
   '@unrs/resolver-binding-android-arm-eabi@1.11.1':
     resolution: {integrity: sha512-ppLRUgHVaGRWUx0R0Ut06Mjo9gBaBkg3v/8AxusGLhsIotbBLuRk51rAzqLC8gq6NyyAojEXglNjzf6R948DNw==}
@@ -8578,6 +8591,10 @@ snapshots:
     dependencies:
       '@eslint/core': 0.17.0
       levn: 0.4.1
+
+  '@expo-google-fonts/great-vibes@0.4.1': {}
+
+  '@expo-google-fonts/playfair-display@0.4.2': {}
 
   '@expo/cli@54.0.19(expo-router@6.0.19)(expo@54.0.29)(react-native@0.81.5(@babel/core@7.28.5)(@types/react@19.1.17)(react@19.1.0))':
     dependencies:
