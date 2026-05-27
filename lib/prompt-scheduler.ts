@@ -66,22 +66,42 @@ export function formatReminderTime(time: string): string {
  * This function would schedule a push notification.
  * For now, it's a no-op.
  */
+import * as Notifications from 'expo-notifications';
+
 export async function schedulePushNotification(
   promptText: string,
   reminderTime: string,
 ): Promise<void> {
-  // TODO: Integrate with Expo Notifications
-  // const { scheduleNotificationAsync } = require('expo-notifications');
-  // await scheduleNotificationAsync({
-  //   content: {
-  //     title: 'Time to Record',
-  //     body: promptText,
-  //   },
-  //   trigger: {
-  //     hour: parseInt(reminderTime.split(':')[0]),
-  //     minute: parseInt(reminderTime.split(':')[1]),
-  //     repeats: true,
-  //   },
-  // });
-  console.log('[PromptScheduler] Push notification stub called for:', promptText);
+  const [hours, minutes] = reminderTime.split(':').map(Number);
+
+  // 1. Request permissions if not already granted
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+  if (finalStatus !== 'granted') {
+    console.warn('Failed to get push token for push notification!');
+    return;
+  }
+
+  // 2. Cancel all existing notifications to avoid duplicates
+  await Notifications.cancelAllScheduledNotificationsAsync();
+
+  // 3. Schedule the daily notification
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: '✨ Time for a family story',
+      body: promptText,
+      data: { url: '/record' },
+    },
+    trigger: {
+      hour: hours,
+      minute: minutes,
+      repeats: true,
+    },
+  });
+
+  console.log(`[PromptScheduler] Daily notification scheduled for ${reminderTime}`);
 }

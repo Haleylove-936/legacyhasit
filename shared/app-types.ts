@@ -8,7 +8,7 @@ export type MemoryTheme =
   | 'advice'
   | 'faith';
 
-export type RecordingType = 'audio' | 'video' | 'text';
+export type RecordingType = 'audio' | 'video' | 'photo' | 'text';
 
 export type UserRole = 'elder' | 'organizer' | 'relative';
 
@@ -33,7 +33,7 @@ export interface Memory {
   promptText?: string;
   theme: MemoryTheme;
   title: string;
-  recordingType: 'audio' | 'video';
+  recordingType: 'audio' | 'video' | 'photo';
   fileUri: string;
   photoUri?: string | null;
   transcript?: string | null;
@@ -50,6 +50,8 @@ export interface FamilyVault {
   name: string;
   inviteCode: string;
   createdAt: string;
+  plan?: "monthly" | "annual";
+  memberLimit?: number;
 }
 
 export interface FamilyMember {

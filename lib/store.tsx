@@ -15,7 +15,7 @@ const initialState: AppState = {
 };
 
 type Action =
-  | { type: 'COMPLETE_ONBOARDING'; payload: { role: UserRole; name: string; vault: FamilyVault } }
+  | { type: 'COMPLETE_ONBOARDING'; payload: { role: UserRole; name: string; vault: FamilyVault; profilePictureUri?: string | null } }
   | { type: 'ADD_MEMORY'; payload: Memory }
   | { type: 'DELETE_MEMORY'; payload: { id: string } }
   | { type: 'UPDATE_MEMORY'; payload: Memory }
@@ -46,6 +46,7 @@ function reducer(state: AppState, action: Action): AppState {
             name: action.payload.name,
             role: action.payload.role,
             joinedAt: new Date().toISOString(),
+            profilePictureUri: action.payload.profilePictureUri || null,
           },
         ],
       };
@@ -110,16 +111,17 @@ function reducer(state: AppState, action: Action): AppState {
 interface StoreContextValue {
   state: AppState;
   dispatch: React.Dispatch<Action>;
-  addMemory: (memory: Memory) => void;
-  deleteMemory: (id: string) => void;
-  updateMemory: (memory: Memory) => void;
+  addMemory: (memory: Memory, trpc?: any) => Promise<void>;
+  deleteMemory: (id: string, trpc?: any) => Promise<void>;
+  updateMemory: (memory: Memory, trpc?: any) => Promise<void>;
   updateMember: (member: FamilyMember) => void;
-  completeOnboarding: (role: UserRole, name: string, vaultName: string) => void;
+  completeOnboarding: (role: UserRole, name: string, vaultName: string, profilePictureUri?: string | null, remoteVault?: FamilyVault) => void;
   advancePrompt: () => void;
   setReminderTime: (time: string) => void;
   markPromptDelivered: (date: string) => void;
   addComment: (memoryId: string, comment: Comment) => void;
   toggleReaction: (memoryId: string, commentId: string, emoji: string, memberId: string) => void;
+  syncMemories: (trpc: any) => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null);
@@ -146,30 +148,70 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
-  const addMemory = useCallback((memory: Memory) => {
+  const syncMemories = useCallback(async (trpc: any) => {
+    if (!state.familyVault?.id) return;
+    try {
+      const remoteMemories = await trpc.sync.getMemories.query({ vaultId: state.familyVault.id });
+      // Merge logic: for now, remote wins
+      dispatch({ type: 'HYDRATE', payload: { ...state, memories: remoteMemories } });
+    } catch (error) {
+      console.error('Sync failed:', error);
+    }
+  }, [state.familyVault?.id, state]);
+
+  const addMemory = useCallback(async (memory: Memory, trpc?: any) => {
     dispatch({ type: 'ADD_MEMORY', payload: memory });
-  }, []);
+    if (trpc && state.familyVault?.id) {
+      try {
+        await trpc.sync.saveMemory.mutate({
+          ...memory,
+          vaultId: state.familyVault.id,
+        });
+      } catch (e) {
+        console.error('Remote save failed:', e);
+      }
+    }
+  }, [state.familyVault?.id]);
 
-  const deleteMemory = useCallback((id: string) => {
+  const deleteMemory = useCallback(async (id: string, trpc?: any) => {
     dispatch({ type: 'DELETE_MEMORY', payload: { id } });
+    if (trpc) {
+      try {
+        await trpc.sync.deleteMemory.mutate({ id });
+      } catch (e) {
+        console.error('Remote delete failed:', e);
+      }
+    }
   }, []);
 
-  const updateMemory = useCallback((memory: Memory) => {
+  const updateMemory = useCallback(async (memory: Memory, trpc?: any) => {
     dispatch({ type: 'UPDATE_MEMORY', payload: memory });
-  }, []);
+    if (trpc && state.familyVault?.id) {
+      try {
+        await trpc.sync.saveMemory.mutate({
+          ...memory,
+          vaultId: state.familyVault.id,
+        });
+      } catch (e) {
+        console.error('Remote update failed:', e);
+      }
+    }
+  }, [state.familyVault?.id]);
 
   const updateMember = useCallback((member: FamilyMember) => {
     dispatch({ type: 'UPDATE_MEMBER', payload: member });
   }, []);
 
-  const completeOnboarding = useCallback((role: UserRole, name: string, vaultName: string) => {
-    const vault: FamilyVault = {
+  const completeOnboarding = useCallback((role: UserRole, name: string, vaultName: string, profilePictureUri?: string | null, remoteVault?: FamilyVault) => {
+    const vault: FamilyVault = remoteVault || {
       id: Date.now().toString(),
       name: vaultName,
       inviteCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
       createdAt: new Date().toISOString(),
+      plan: "monthly",
+      memberLimit: 10,
     };
-    dispatch({ type: 'COMPLETE_ONBOARDING', payload: { role, name, vault } });
+    dispatch({ type: 'COMPLETE_ONBOARDING', payload: { role, name, vault, profilePictureUri } });
   }, []);
 
   const advancePrompt = useCallback(() => {
@@ -194,7 +236,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider
-      value={{ state, dispatch, addMemory, deleteMemory, updateMemory, updateMember, completeOnboarding, advancePrompt, setReminderTime, markPromptDelivered, addComment, toggleReaction }}
+      value={{ state, dispatch, addMemory, deleteMemory, updateMemory, updateMember, completeOnboarding, advancePrompt, setReminderTime, markPromptDelivered, addComment, toggleReaction, syncMemories }}
     >
       {children}
     </StoreContext.Provider>

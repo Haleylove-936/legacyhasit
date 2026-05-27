@@ -1,15 +1,18 @@
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useStore } from '@/lib/store';
+import { trpc } from '@/lib/trpc';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View, Pressable, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, Pressable, TextInput, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 export default function JoinVaultScreen() {
   const colors = useColors();
   const router = useRouter();
   const { completeOnboarding } = useStore();
+  const [isJoining, setIsJoining] = useState(false);
+  const utils = trpc.useUtils();
 
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -17,13 +20,46 @@ export default function JoinVaultScreen() {
 
   const canJoin = name.trim().length > 0 && code.trim().length >= 4;
 
-  const handleJoin = () => {
-    if (!canJoin) return;
-    if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    // In a local-first app, we create a vault with the provided code as the invite code
-    // In production this would validate against the server
-    completeOnboarding('relative', name.trim(), `${name.trim()}'s Family`);
-    router.replace('/(tabs)' as never);
+  const handleJoin = async () => {
+    if (!canJoin || isJoining) return;
+    setIsJoining(true);
+    setError('');
+
+    try {
+      // 1. Fetch vault by invite code
+      const vault = await utils.client.sync.getVault.query({ inviteCode: code.trim() });
+      
+      if (!vault) {
+        setError('Invalid invite code. Please check with your family organizer.');
+        setIsJoining(false);
+        return;
+      }
+
+      // 2. Check if vault is full (limit check)
+      if (vault.memberLimit && vault.memberUids.length >= vault.memberLimit) {
+        setError('This family vault is full. Please contact the organizer to upgrade.');
+        setIsJoining(false);
+        return;
+      }
+
+      // 3. Complete onboarding with the found vault
+      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      completeOnboarding(
+        'relative', 
+        name.trim(), 
+        vault.name, 
+        null, 
+        vault
+      );
+      
+      router.replace('/(tabs)' as never);
+    } catch (err) {
+      console.error('Join failed:', err);
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setIsJoining(false);
+    }
   };
 
   return (
@@ -78,14 +114,14 @@ export default function JoinVaultScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.joinButton,
-              { backgroundColor: canJoin ? colors.primary : colors.border },
-              pressed && canJoin && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+              { backgroundColor: canJoin && !isJoining ? colors.primary : colors.border },
+              pressed && canJoin && !isJoining && { opacity: 0.85, transform: [{ scale: 0.97 }] },
             ]}
             onPress={handleJoin}
-            disabled={!canJoin}
+            disabled={!canJoin || isJoining}
           >
-            <Text style={[styles.joinText, { color: canJoin ? '#FFFFFF' : colors.muted }]}>
-              Join Family Vault
+            <Text style={[styles.joinText, { color: canJoin && !isJoining ? '#FFFFFF' : colors.muted }]}>
+              {isJoining ? 'Joining...' : 'Join Family Vault'}
             </Text>
           </Pressable>
         </ScrollView>

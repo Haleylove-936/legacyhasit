@@ -57,11 +57,11 @@
 - [x] 16 unit tests passing (prompts, models, invite code)
 
 ## Future Enhancements (Not in v1)
-- [ ] Server-side transcription using LLM
-- [ ] Video recording support
+- [x] Server-side transcription using LLM (Implemented via Groq/Whisper)
+- [x] Video recording support (Integrated via expo-image-picker/video)
 - [ ] Push notifications for daily prompts
 - [ ] Cloud sync across family devices
-- [ ] Photo attachment to memories
+- [x] Photo attachment to memories (Implemented)
 
 
 ## Phase 1: AI Transcription Pipeline ✓
@@ -90,19 +90,44 @@
 ## Phase 4: Profile Pictures & Extended Features ✓
 - [x] Extend FamilyMember type with profilePictureUri field
 - [x] Add profile picture selection to onboarding (setup screen)
-- [ ] Add profile picture editor to settings screen
+- [x] Add profile picture editor to settings screen
 - [x] Extend Memory type with recordingType selector (audio/video) and title/notes fields
 - [x] Add title/notes editor to recording screen after recording
-- [ ] Add recording type selector (audio/video) to recording screen
-- [ ] Update memory detail to show recorded by member with profile picture
+- [x] Add recording type selector (audio/video) to recording screen
+- [x] Update memory detail to show recorded by member with profile picture
 - [x] Write tests for profile pictures and extended recording fields
 
-## Phase 5: Member Filtering & Comments
-- [ ] Add member filter UI to Memories tab (dropdown/chips)
-- [ ] Add member filter UI to Search tab
-- [ ] Extend Memory type with comments array (id, memberId, text, timestamp, reactions)
-- [ ] Add comments section to memory detail screen
-- [ ] Add comment input field with member attribution
-- [ ] Add emoji reactions to comments (👍 ❤️ 😂 😢)
-- [ ] Display member profile pictures with comments
-- [ ] Write tests for filtering and comments
+## Phase 5: Member Filtering & Comments ✓
+- [x] Add member filter UI to Memories tab (dropdown/chips - fully wired)
+- [x] Add member filter UI to Search tab (fully wired)
+- [x] Extend Memory type with comments array (id, memberId, text, timestamp, reactions)
+- [x] Add comments section to memory detail screen
+- [x] Add comment input field with member attribution
+- [x] Add emoji reactions to comments (👍 ❤️ 😂 😢)
+- [x] Display member profile pictures with comments
+- [x] Write tests for filtering and comments
+
+## Phase 6: The "Legacy Book" & Storytelling ✓
+- [x] Dynamic "Story Highlights" Carousel on Home screen
+- [x] PDF Export: Generate a themed PDF "Legacy Book" of all memories
+- [x] Background Music: Add subtle ambient tracks for playback
+- [x] Photo Slideshow: Play memories as a slideshow of attached photos
+
+## Phase 7: Accessibility & Elder-First Design ✓
+- [x] Voice Commands: "Start recording" voice trigger
+- [x] High-Contrast Mode toggle in settings
+- [x] Interactive Tutorial: 3-step guide for first-time Elders
+- [x] Adjustable Text Size: System-wide font scaling for easier reading
+
+## Phase 8: Role-Based Experience ✓
+- [x] **Elder Mode:** Radically simplified Home screen with HUGE "Answer Question" button
+- [x] **Elder Record UX:** Hidden complex settings (titles, notes, modes) for distraction-free recording
+- [x] **Elder Upload:** Dedicated "Upload from My Phone" path for existing media
+- [x] **Admin Dashboard:** Exclusive screen for Organizers to manage members and moderate stories
+- [x] **Permissions:** Hidden destructive actions (delete/edit) from Elder and Relative roles
+
+## Future Enhancements (Not in v1)nection & Notifications ✓
+- [x] Reaction Notifications: Alert Elder when family reacts to stories
+- [x] Family Milestones: Shared calendar for birthdays/anniversaries
+- [x] "Request a Story": Let family members send specific prompts to the Elder
+- [x] Weekly Digest: Email or notification summary of new family memories

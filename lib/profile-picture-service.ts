@@ -2,24 +2,57 @@
  * Profile Picture Service
  *
  * Handles profile picture selection for family members.
- * Uses a stub implementation that can be replaced with expo-image-picker later.
+ * Uses expo-image-picker for camera and library access.
  */
+
+import * as ImagePicker from 'expo-image-picker';
 
 /**
- * Stub profile picture picker function.
- * In production, this would use expo-image-picker or similar.
- *
- * For now, returns a placeholder URI that can be stored on the member.
+ * Launch image picker to select a profile picture from the library.
+ * Returns the URI of the selected image or null if cancelled.
+ */
+export async function pickProfilePictureFromLibrary(): Promise<string | null> {
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (status !== 'granted') return null;
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    allowsEditing: true,
+    aspect: [1, 1],
+    quality: 0.85,
+  });
+
+  if (result.canceled) return null;
+  return result.assets[0].uri;
+}
+
+/**
+ * Launch camera to take a profile picture.
+ * Returns the URI of the captured image or null if cancelled.
+ */
+export async function takeProfilePicture(): Promise<string | null> {
+  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  if (status !== 'granted') return null;
+
+  const result = await ImagePicker.launchCameraAsync({
+    mediaTypes: ['images'],
+    allowsEditing: true,
+    aspect: [1, 1],
+    quality: 0.85,
+  });
+
+  if (result.canceled) return null;
+  return result.assets[0].uri;
+}
+
+/**
+ * Convenience function that shows both camera and library options.
+ * Returns the URI of the selected/captured image or null if cancelled.
  */
 export async function pickProfilePicture(): Promise<string | null> {
-  // Simulate network/permission delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-
-  // Stub response: return a placeholder URI
-  // In a real implementation, this would call ImagePicker.launchImageLibraryAsync()
-  // and return the actual selected image URI
-  const placeholderUri = `file:///profiles/member-${Date.now()}.jpg`;
-  return placeholderUri;
+  // For now, default to library picker
+  // In a full implementation, you could show an action sheet with both options
+  return pickProfilePictureFromLibrary();
 }
 
 /**
@@ -41,14 +74,14 @@ export function getInitials(name: string): string {
  */
 export function getAvatarColor(memberId: string): string {
   const colors = [
-    '#FF6B6B', // red
-    '#4ECDC4', // teal
-    '#45B7D1', // blue
-    '#FFA07A', // salmon
-    '#98D8C8', // mint
-    '#F7DC6F', // yellow
-    '#BB8FCE', // purple
-    '#85C1E2', // sky blue
+    '#8b5a2b', // walnut (primary)
+    '#d4a373', // antique gold
+    '#6b3e1b', // dark walnut
+    '#a67c52', // warm tan
+    '#d4ba94', // light parchment
+    '#806e5d', // muted brown
+    '#4a7c59', // success green
+    '#b8860b', // warning gold
   ];
 
   let hash = 0;

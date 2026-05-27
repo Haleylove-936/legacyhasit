@@ -8,9 +8,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet, Text, View, Pressable, ScrollView, Alert, Share, Platform,
-  TextInput, KeyboardAvoidingView,
+  TextInput, KeyboardAvoidingView, Image,
 } from 'react-native';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import * as Haptics from 'expo-haptics';
 
 const EMOJI_REACTIONS = ['❤️', '😢', '😂', '👏', '🙏'];
@@ -29,12 +30,18 @@ export default function MemoryDetailScreen() {
   // current user is always the first member (the one who onboarded)
   const currentMember = state.members[0];
 
-  const player = useAudioPlayer(memory?.fileUri ? { uri: memory.fileUri } : null);
+  const player = useAudioPlayer(memory?.fileUri && memory.recordingType === 'audio' ? { uri: memory.fileUri } : null);
   const status = useAudioPlayerStatus(player);
+
+  const videoPlayer = useVideoPlayer(memory?.fileUri && memory.recordingType === 'video' ? memory.fileUri : null, (p) => {
+    p.loop = false;
+  });
 
   useEffect(() => {
     setAudioModeAsync({ playsInSilentMode: true });
-    return () => { player.release(); };
+    return () => {
+      player.release();
+    };
   }, []);
 
   if (!memory) {
@@ -114,8 +121,13 @@ export default function MemoryDetailScreen() {
     toggleReaction(memory.id, commentId, emoji, currentMember.id);
   };
 
+  const getMember = (memberId?: string) => {
+    if (!memberId) return null;
+    return state.members.find(m => m.id === memberId) || null;
+  };
+
   const getMemberName = (memberId: string) => {
-    return state.members.find(m => m.id === memberId)?.name ?? 'Family Member';
+    return getMember(memberId)?.name ?? 'Family Member';
   };
 
   const date = new Date(memory.createdAt).toLocaleDateString('en-US', {
@@ -221,6 +233,18 @@ export default function MemoryDetailScreen() {
             </View>
           )}
 
+          {/* Video Player */}
+          {memory.fileUri && memory.recordingType === 'video' && (
+            <View style={[styles.videoContainer, { backgroundColor: '#000', borderColor: colors.border }]}>
+              <VideoView
+                player={videoPlayer}
+                style={styles.videoPlayer}
+                allowsFullscreen
+                allowsPictureInPicture
+              />
+            </View>
+          )}
+
           {/* Transcript / Notes */}
           {(memory.transcript || memory.notes) && (
             <View style={[styles.transcriptCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -234,9 +258,18 @@ export default function MemoryDetailScreen() {
           )}
 
           {/* Recorded By */}
-          <Text style={[styles.recordedBy, { color: colors.muted }]}>
-            Recorded by {memory.recordedBy}
-          </Text>
+          <View style={styles.recordedByContainer}>
+            <View style={[styles.recordedByAvatar, { backgroundColor: colors.primary }, getMember(memory.recordedByMemberId)?.profilePictureUri && { backgroundColor: 'transparent' }]}>
+              {getMember(memory.recordedByMemberId)?.profilePictureUri ? (
+                <Image source={{ uri: getMember(memory.recordedByMemberId)!.profilePictureUri! }} style={styles.recordedByAvatarImage} />
+              ) : (
+                <Text style={styles.recordedByAvatarText}>{(getMember(memory.recordedByMemberId)?.name ?? memory.recordedBy)[0]?.toUpperCase()}</Text>
+              )}
+            </View>
+            <Text style={[styles.recordedBy, { color: colors.muted }]}>
+              Recorded by <Text style={{ fontWeight: '600', color: colors.foreground }}>{getMember(memory.recordedByMemberId)?.name ?? memory.recordedBy}</Text>
+            </Text>
+          </View>
 
           {/* ── Comments & Reactions ── */}
           <View style={[styles.commentsSection, { borderTopColor: colors.border }]}>
@@ -253,16 +286,20 @@ export default function MemoryDetailScreen() {
               </View>
             )}
 
-            {comments.map(comment => (
-              <CommentBubble
-                key={comment.id}
-                comment={comment}
-                memberName={getMemberName(comment.memberId)}
-                currentMemberId={currentMember?.id ?? ''}
-                onReact={(emoji) => handleReaction(comment.id, emoji)}
-                colors={colors}
-              />
-            ))}
+            {comments.map(comment => {
+              const member = state.members.find(m => m.id === comment.memberId);
+              return (
+                <CommentBubble
+                  key={comment.id}
+                  comment={comment}
+                  memberName={getMemberName(comment.memberId)}
+                  memberProfilePicture={member?.profilePictureUri}
+                  currentMemberId={currentMember?.id ?? ''}
+                  onReact={(emoji) => handleReaction(comment.id, emoji)}
+                  colors={colors}
+                />
+              );
+            })}
 
             {/* Comment Input */}
             <View style={[styles.commentInputRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -299,12 +336,14 @@ export default function MemoryDetailScreen() {
 function CommentBubble({
   comment,
   memberName,
+  memberProfilePicture,
   currentMemberId,
   onReact,
   colors,
 }: {
   comment: Comment;
   memberName: string;
+  memberProfilePicture?: string | null;
   currentMemberId: string;
   onReact: (emoji: string) => void;
   colors: ReturnType<typeof import('@/hooks/use-colors').useColors>;
@@ -327,8 +366,12 @@ function CommentBubble({
   return (
     <View style={[styles.commentBubble, { backgroundColor: isOwn ? colors.primary + '18' : colors.surface, borderColor: colors.border }]}>
       <View style={styles.commentHeader}>
-        <View style={[styles.commentAvatar, { backgroundColor: colors.primary }]}>
-          <Text style={styles.commentAvatarText}>{memberName[0]?.toUpperCase()}</Text>
+        <View style={[styles.commentAvatar, { backgroundColor: colors.primary }, memberProfilePicture && { backgroundColor: 'transparent' }]}>
+          {memberProfilePicture ? (
+            <Image source={{ uri: memberProfilePicture }} style={styles.commentAvatarImage} />
+          ) : (
+            <Text style={styles.commentAvatarText}>{memberName[0]?.toUpperCase()}</Text>
+          )}
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.commentAuthor, { color: colors.foreground }]}>{memberName}</Text>
@@ -453,7 +496,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     overflow: 'hidden',
-    minHeight: 120,
+    height: 300,
+    backgroundColor: '#000',
+  },
+  detailPhotoImage: {
+    width: '100%',
+    height: '100%',
   },
   photoPlaceholder: {
     flex: 1,
@@ -468,6 +516,16 @@ const styles = StyleSheet.create({
   photoPlaceholderLabel: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  videoContainer: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+    height: 300,
+  },
+  videoPlayer: {
+    width: '100%',
+    height: '100%',
   },
   promptBox: {
     padding: 16,
@@ -541,9 +599,32 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 27,
   },
+  recordedByContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 8,
+  },
+  recordedByAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordedByAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+  },
+  recordedByAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
   recordedBy: {
     fontSize: 14,
-    textAlign: 'center',
   },
   // ── Comments ──
   commentsSection: {
@@ -593,6 +674,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  commentAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 17,
   },
   commentAuthor: {
     fontSize: 14,
