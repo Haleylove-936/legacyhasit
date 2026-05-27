@@ -42,8 +42,8 @@ export default function TabLayout() {
           </ImageBackground>
         ),
         tabBarLabelStyle: {
+          fontFamily: 'PlayfairDisplay_700Bold',
           fontSize: 11,
-          fontWeight: '600',
         },
       }}
     >
@@ -61,12 +61,12 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="book.fill" color={color} />,
         }}
       />
-      {/* Search - Available to all */}
+      {/* Search - Available via Stories screen usually, hiding from bottom bar to reduce clutter */}
       <Tabs.Screen
         name="search"
         options={{
           title: 'Search',
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="magnifyingglass" color={color} />,
+          href: null,
         }}
       />
       {/* Timeline - Family social feed */}

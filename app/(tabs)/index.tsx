@@ -4,12 +4,12 @@ import { useStore } from '@/lib/store';
 import { getDailyPrompt, THEME_META } from '@/constants/prompts';
 import { Fonts } from '@/lib/_core/theme';
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, View, Pressable, ScrollView, FlatList } from 'react-native';
+import { StyleSheet, Text, View, Pressable, ScrollView, FlatList, Image, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Platform } from 'react-native';
 import { Memory } from '@/shared/app-types';
 import { useMemo, useEffect, useState } from 'react';
 import { hasPromptBeenDeliveredToday, markPromptAsDelivered } from '@/lib/prompt-scheduler';
+import { StoryHighlightsCarousel } from '@/components/story-highlights-carousel';
 
 function MemoryCard({ memory, onPress }: { memory: Memory; onPress: () => void }) {
   const colors = useColors();
@@ -107,7 +107,20 @@ export default function HomeScreen() {
             onPress={handleRecordAnswer}
           >
             <Text style={styles.elderRecordEmoji}>🎙️</Text>
-            <Text style={styles.elderRecordText}>Record My Story</Text>
+            <Text style={styles.elderRecordText}>Answer Question</Text>
+          </Pressable>
+
+          {/* Upload Button for Elders */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.elderUploadButton,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              pressed && { opacity: 0.7 },
+            ]}
+            onPress={() => router.push({ pathname: '/record', params: { mode: 'upload' } } as never)}
+          >
+            <Text style={styles.elderUploadEmoji}>🖼️</Text>
+            <Text style={[styles.elderUploadText, { color: colors.foreground }]}>Upload from My Phone</Text>
           </Pressable>
 
           {/* Recent Memories */}
@@ -195,6 +208,14 @@ export default function HomeScreen() {
             <Text style={styles.skipText}>or record a different story</Text>
           </Pressable>
         </View>
+
+        {/* Story Highlights Carousel */}
+        {recentMemories.length > 0 && (
+          <StoryHighlightsCarousel
+            memories={memories}
+            onSelectMemory={handleViewMemory}
+          />
+        )}
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
@@ -489,6 +510,23 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 32,
     fontFamily: Fonts?.display,
+    fontWeight: '700',
+  },
+  elderUploadButton: {
+    borderRadius: 20,
+    paddingVertical: 24,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 16,
+    borderWidth: 2,
+  },
+  elderUploadEmoji: {
+    fontSize: 32,
+  },
+  elderUploadText: {
+    fontSize: 20,
     fontWeight: '700',
   },
   elderRecentSection: {

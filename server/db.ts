@@ -21,13 +21,18 @@ export type DbMemory = {
   theme: string;
   promptId?: string;
   promptText?: string;
+  recordingType?: "audio" | "video" | "photo";
+  fileUri?: string;
   audioUrl?: string;
+  photoUri?: string | null;
   photoUrl?: string;
-  transcript?: string;
-  notes?: string;
+  transcript?: string | null;
+  notes?: string | null;
   durationSeconds: number;
   recordedBy: string;
+  recordedByMemberId?: string;
   createdAt: string;
+  comments?: unknown[];
 };
 
 export type DbVault = {
@@ -37,6 +42,8 @@ export type DbVault = {
   ownerUid: string;
   memberUids: string[];
   createdAt: string;
+  plan: "monthly" | "annual";
+  memberLimit: number;
 };
 
 function db() {
@@ -84,6 +91,11 @@ export async function getMemoriesByVault(vaultId: string): Promise<DbMemory[]> {
   return snap.docs.map((d) => d.data() as DbMemory);
 }
 
+export async function getMemoryById(id: string): Promise<DbMemory | null> {
+  const snap = await db().collection("memories").doc(id).get();
+  return snap.exists ? (snap.data() as DbMemory) : null;
+}
+
 export async function saveMemory(memory: DbMemory): Promise<void> {
   await db().collection("memories").doc(memory.id).set(memory);
 }
@@ -109,9 +121,23 @@ export async function createVault(vault: DbVault): Promise<void> {
   await db().collection("vaults").doc(vault.id).set(vault);
 }
 
+export async function updateVaultPlan(vaultId: string, plan: "monthly" | "annual", memberLimit: number): Promise<void> {
+  await db().collection("vaults").doc(vaultId).update({ plan, memberLimit });
+}
+
 export async function addMemberToVault(vaultId: string, uid: string): Promise<void> {
-  await db()
-    .collection("vaults")
-    .doc(vaultId)
-    .update({ memberUids: admin.firestore.FieldValue.arrayUnion(uid) });
+  const vaultRef = db().collection("vaults").doc(vaultId);
+  await db().runTransaction(async (transaction) => {
+    const vaultDoc = await transaction.get(vaultRef);
+    if (!vaultDoc.exists) throw new Error("Vault not found");
+    
+    const vault = vaultDoc.data() as DbVault;
+    if (vault.memberUids.length >= vault.memberLimit) {
+      throw new Error("Member limit reached. Please upgrade your plan to add more members.");
+    }
+    
+    transaction.update(vaultRef, {
+      memberUids: admin.firestore.FieldValue.arrayUnion(uid)
+    });
+  });
 }

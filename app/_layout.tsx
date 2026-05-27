@@ -10,7 +10,11 @@ import { Platform, View } from "react-native";
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { useFonts } from "expo-font";
+import { GreatVibes_400Regular } from "@expo-google-fonts/great-vibes";
+import { PlayfairDisplay_400Regular, PlayfairDisplay_700Bold } from "@expo-google-fonts/playfair-display";
 import * as SplashScreen from "expo-splash-screen";
+import * as Notifications from 'expo-notifications';
+import { useRouter } from 'expo-router';
 import {
   SafeAreaFrameContext,
   SafeAreaInsetsContext,
@@ -31,13 +35,25 @@ export const unstable_settings = {
   anchor: "(tabs)",
 };
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
 export default function RootLayout() {
+  const router = useRouter();
   const initialInsets = initialWindowMetrics?.insets ?? DEFAULT_WEB_INSETS;
   const initialFrame = initialWindowMetrics?.frame ?? DEFAULT_WEB_FRAME;
 
   // ── ALL hooks must be declared before any early return ──
   const [fontsLoaded] = useFonts({
     "MaidenOrange-Regular": require("@/assets/fonts/MaidenOrange-Regular.ttf"),
+    GreatVibes_400Regular,
+    PlayfairDisplay_400Regular,
+    PlayfairDisplay_700Bold,
   });
 
   const [insets, setInsets] = useState<EdgeInsets>(initialInsets);
@@ -86,6 +102,20 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded) SplashScreen.hideAsync();
   }, [fontsLoaded]);
+
+  useEffect(() => {
+    // Handle notification clicks while app is running
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+      const url = response.notification.request.content.data?.url;
+      if (url) {
+        router.push(url);
+      }
+    });
+
+    return () => {
+      Notifications.removeNotificationSubscription(responseListener);
+    };
+  }, []);
 
   // ── Early return AFTER all hooks ──
   if (!fontsLoaded) return <View style={{ flex: 1 }} />;

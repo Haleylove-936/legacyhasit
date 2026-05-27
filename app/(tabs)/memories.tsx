@@ -158,10 +158,10 @@ export default function MemoriesScreen() {
         </View>
 
         {/* All Memories Section */}
-        {state.memories.length > 0 && (
+        {filteredMemories.length > 0 && (
           <View style={styles.allSection}>
             <Text style={[styles.allTitle, { color: colors.foreground }]}>All Stories</Text>
-            {state.memories.map(memory => {
+            {filteredMemories.map(memory => {
               const meta = THEME_META[memory.theme];
               const date = new Date(memory.createdAt).toLocaleDateString('en-US', {
                 month: 'short', day: 'numeric',

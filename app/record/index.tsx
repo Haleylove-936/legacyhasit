@@ -18,6 +18,8 @@ import {
 } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { pickImage, takePhoto, pickVideo, recordVideo } from '@/lib/image-picker-service';
+import { transcribeAudio } from '@/lib/transcription-service';
+import { trpc } from '@/lib/trpc';
 
 type RecordingMode = 'audio' | 'video' | 'photo';
 
@@ -65,11 +67,20 @@ const MODE_OPTIONS: { key: RecordingMode; emoji: string; label: string }[] = [
 export default function RecordScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { addMemory, advancePrompt } = useStore();
-  const { promptId, promptText, theme } = useLocalSearchParams<{
+  const { addMemory, advancePrompt, updateMemory, state } = useStore();
+  const transcriptionMutation = trpc.transcription.transcribe.useMutation();
+  const uploadMutation = trpc.transcription.upload.useMutation();
+  const trpcContext = {
+    transcription: {
+      upload: uploadMutation,
+      transcribe: transcriptionMutation,
+    }
+  };
+  const { promptId, promptText, theme, mode: initialMode } = useLocalSearchParams<{
     promptId?: string;
     promptText?: string;
     theme?: MemoryTheme;
+    mode?: string;
   }>();
 
   const [mode, setMode] = useState<RecordingMode>('audio');
@@ -84,8 +95,18 @@ export default function RecordScreen() {
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(audioRecorder);
   const isRecording = recorderState.isRecording;
+  const isElder = state.userRole === 'elder';
 
   const themeMeta = THEME_META[theme ?? 'childhood'];
+
+  // For Elders, we default to audio and hide the selector, unless they chose upload
+  useEffect(() => {
+    if (initialMode === 'upload') {
+      setMode('photo'); // Start with photo for upload
+    } else if (isElder && mode !== 'audio') {
+      setMode('audio');
+    }
+  }, [isElder, initialMode]);
 
   useEffect(() => {
     (async () => {
@@ -186,29 +207,45 @@ export default function RecordScreen() {
   };
 
   // ── Save ───────────────────────────────────────────────
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!recordingUri) return;
     if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+    const memoryId = Date.now().toString();
+    const finalTitle = title.trim() || (promptText
+      ? (promptText.substring(0, 60) + (promptText.length > 60 ? '…' : ''))
+      : `Story — ${new Date().toLocaleDateString()}`);
+    const finalTheme = (theme as MemoryTheme) ?? 'childhood';
+
     const memory: Memory = {
-      id: Date.now().toString(),
+      id: memoryId,
       promptId: promptId,
       promptText: promptText,
-      theme: (theme as MemoryTheme) ?? 'childhood',
-      title: title.trim() || (promptText
-        ? (promptText.substring(0, 60) + (promptText.length > 60 ? '…' : ''))
-        : `Story — ${new Date().toLocaleDateString()}`),
-      recordingType: mode === 'photo' ? 'audio' : mode, // photo memories stored as audio type with photoUri
+      theme: finalTheme,
+      title: finalTitle,
+      recordingType: mode,
       fileUri: recordingUri,
       photoUri: mode === 'photo' ? photoUri : (photoUri || null),
       notes: notes.trim() || undefined,
       recordedBy: 'Me',
       createdAt: new Date().toISOString(),
       durationSeconds: mode === 'audio' ? elapsedSeconds : undefined,
+      transcript: null, // Start with null
     };
 
-    addMemory(memory);
+    await addMemory(memory, trpc);
     if (promptId) advancePrompt();
+
+    // Trigger background transcription for audio
+    if (mode === 'audio') {
+      transcribeAudio(recordingUri, finalTitle, finalTheme, trpcContext).then(async (transcript) => {
+        const currentMemory = state.memories.find(m => m.id === memoryId);
+        if (currentMemory) {
+          await updateMemory({ ...currentMemory, transcript }, trpc);
+        }
+      });
+    }
+
     router.replace({ pathname: '/memory/[id]', params: { id: memory.id, justSaved: '1' } } as never);
   };
 
@@ -266,30 +303,32 @@ export default function RecordScreen() {
           )}
         </View>
 
-        {/* Mode Selector - Always Visible */}
-        <View style={[styles.modeRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          {MODE_OPTIONS.map(opt => (
-            <Pressable
-              key={opt.key}
-              style={({ pressed }) => [
-                styles.modeBtn,
-                mode === opt.key && { backgroundColor: colors.primary },
-                isRecording && { opacity: 0.5 },
-                pressed && !isRecording && { opacity: 0.75 },
-              ]}
-              onPress={() => handleModeChange(opt.key)}
-              disabled={isRecording}
-            >
-              <Text style={styles.modeBtnEmoji}>{opt.emoji}</Text>
-              <Text style={[
-                styles.modeBtnLabel,
-                { color: mode === opt.key ? '#FFFFFF' : colors.muted },
-              ]}>
-                {opt.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        {/* Mode Selector - Hidden for Elders */}
+        {!isElder && (
+          <View style={[styles.modeRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {MODE_OPTIONS.map(opt => (
+              <Pressable
+                key={opt.key}
+                style={({ pressed }) => [
+                  styles.modeBtn,
+                  mode === opt.key && { backgroundColor: colors.primary },
+                  isRecording && { opacity: 0.5 },
+                  pressed && !isRecording && { opacity: 0.75 },
+                ]}
+                onPress={() => handleModeChange(opt.key)}
+                disabled={isRecording}
+              >
+                <Text style={styles.modeBtnEmoji}>{opt.emoji}</Text>
+                <Text style={[
+                  styles.modeBtnLabel,
+                  { color: mode === opt.key ? '#FFFFFF' : colors.muted },
+                ]}>
+                  {opt.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
 
         {/* ── AUDIO MODE ── */}
         {mode === 'audio' && (
@@ -445,41 +484,65 @@ export default function RecordScreen() {
         {/* ── Review / Save (shown after any capture) ── */}
         {hasCapture && !isRecording && (
           <View style={styles.reviewSection}>
-            <TextInput
-              style={[styles.titleInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-              placeholder="Give this memory a title (optional)"
-              placeholderTextColor={colors.muted}
-              value={title}
-              onChangeText={setTitle}
-              maxLength={100}
-            />
-            <TextInput
-              style={[styles.notesInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-              placeholder="Add notes or context (optional)"
-              placeholderTextColor={colors.muted}
-              value={notes}
-              onChangeText={setNotes}
-              multiline
-              maxLength={500}
-            />
+            {/* Elders don't need to type titles or notes */}
+            {!isElder && (
+              <>
+                <TextInput
+                  style={[styles.titleInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+                  placeholder="Give this memory a title (optional)"
+                  placeholderTextColor={colors.muted}
+                  value={title}
+                  onChangeText={setTitle}
+                  maxLength={100}
+                />
+                <TextInput
+                  style={[styles.notesInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+                  placeholder="Add notes or context (optional)"
+                  placeholderTextColor={colors.muted}
+                  value={notes}
+                  onChangeText={setNotes}
+                  multiline
+                  maxLength={500}
+                />
+              </>
+            )}
 
-            {/* Attach photo to audio/video memories */}
+            {/* Attach photo to audio/video memories - Elders can do this if they want, but it's secondary */}
             {mode !== 'photo' && (
               <Pressable
-                style={({ pressed }) => [styles.attachPhotoBtn, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+                style={({ pressed }) => [
+                  styles.attachPhotoBtn, 
+                  { backgroundColor: colors.surface, borderColor: colors.border }, 
+                  pressed && { opacity: 0.7 },
+                  isElder && { paddingVertical: 20 } // Bigger tap target for Elders
+                ]}
                 onPress={handleAddPhoto}
               >
-                <Text style={[styles.attachPhotoBtnText, { color: colors.primary }]}>
-                  {photoUri ? '✓ Photo Attached' : '📷 Attach a Photo (Optional)'}
+                <Text style={[
+                  styles.attachPhotoBtnText, 
+                  { color: colors.primary },
+                  isElder && { fontSize: 18 }
+                ]}>
+                  {photoUri ? '✓ Photo Attached' : '📷 Add a Photo (Optional)'}
                 </Text>
               </Pressable>
             )}
 
             <Pressable
-              style={({ pressed }) => [styles.saveButton, { backgroundColor: colors.success }, pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] }]}
+              style={({ pressed }) => [
+                styles.saveButton, 
+                { backgroundColor: colors.success }, 
+                pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                isElder && { paddingVertical: 32 } // HUGE save button for Elders
+              ]}
               onPress={handleSave}
             >
-              <Text style={styles.saveButtonText}>Save to Family Vault ✨</Text>
+              <Text style={[
+                styles.saveButtonText,
+                isElder && { fontSize: 24 }
+              ]}>
+                {isElder ? 'Finish & Share ✨' : 'Save to Family Vault ✨'}
+              </Text>
             </Pressable>
           </View>
         )}

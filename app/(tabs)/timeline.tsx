@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, Pressable, FlatList, TextInput, Platform } from 'react-native';
+import { ScrollView, Text, View, Pressable, FlatList, TextInput, Platform, Image } from 'react-native';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useStore } from '@/lib/store';
@@ -53,9 +53,7 @@ function TimelineCard({ memory, onPress }: { memory: Memory; onPress: () => void
 
       {/* Photo if attached */}
       {memory.photoUri && (
-        <View style={styles.cardPhoto}>
-          <Text style={styles.photoPlaceholder}>📷 Photo attached</Text>
-        </View>
+        <Image source={{ uri: memory.photoUri }} style={styles.cardPhoto} />
       )}
 
       {/* Notes */}
@@ -263,14 +261,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   cardPhoto: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    alignItems: 'center',
-  },
-  photoPlaceholder: {
-    fontSize: 14,
+    height: 200,
+    width: '100%',
+    borderRadius: 12,
+    resizeMode: 'cover',
   },
   cardNotes: {
     fontSize: 15,
