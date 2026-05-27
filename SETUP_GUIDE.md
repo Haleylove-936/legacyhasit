@@ -127,6 +127,7 @@ REVENUECAT_WEBHOOK_SECRET=your_webhook_secret
 
 # Session
 JWT_SECRET=a_long_random_string_at_least_32_chars
+CORS_ORIGINS=https://your-web-app.com,http://localhost:8081
 
 # Owner (your Firebase UID — find it in Firebase console → Authentication → Users)
 OWNER_UID=your_firebase_uid

@@ -5,7 +5,76 @@ import { transcribeAudio } from "./_core/voiceTranscription";
 import { uploadAudio } from "./storage";
 import * as db from "./db";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+
+const MAX_AUDIO_UPLOAD_BYTES = 18 * 1024 * 1024;
+const TRANSCRIPTION_RATE_LIMIT = {
+  maxRequests: 20,
+  windowMs: 60 * 60 * 1000,
+};
+
+const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
+
+const memoryInputSchema = z.object({
+  id: z.string().min(1),
+  vaultId: z.string().min(1),
+  title: z.string().min(1),
+  theme: z.string().min(1),
+  promptId: z.string().optional(),
+  promptText: z.string().optional(),
+  recordingType: z.enum(["audio", "video", "photo"]).optional(),
+  fileUri: z.string().optional(),
+  audioUrl: z.string().url().optional(),
+  photoUri: z.string().nullable().optional(),
+  photoUrl: z.string().url().optional(),
+  transcript: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  durationSeconds: z.number().nonnegative().optional(),
+  recordedBy: z.string().min(1),
+  recordedByMemberId: z.string().optional(),
+  createdAt: z.string().min(1),
+  comments: z.array(z.unknown()).optional(),
+}).passthrough();
+
+const audioContentTypeSchema = z.enum([
+  "audio/aac",
+  "audio/m4a",
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/mp4",
+  "audio/wav",
+  "audio/webm",
+  "audio/x-m4a",
+]);
+
+function assertVaultMember(vault: db.DbVault | null, uid: string): db.DbVault {
+  if (!vault) throw new TRPCError({ code: "NOT_FOUND", message: "Vault not found" });
+  if (!vault.memberUids.includes(uid)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this vault" });
+  }
+  return vault;
+}
+
+function checkRateLimit(uid: string, action: string): void {
+  const now = Date.now();
+  const key = `${uid}:${action}`;
+  const current = rateLimitBuckets.get(key);
+
+  if (!current || current.resetAt <= now) {
+    rateLimitBuckets.set(key, { count: 1, resetAt: now + TRANSCRIPTION_RATE_LIMIT.windowMs });
+    return;
+  }
+
+  if (current.count >= TRANSCRIPTION_RATE_LIMIT.maxRequests) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: "Transcription limit reached. Please try again later.",
+    });
+  }
+
+  current.count += 1;
+}
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -22,24 +91,31 @@ export const appRouter = router({
   }),
 
   transcription: router({
-    upload: publicProcedure
+    upload: protectedProcedure
       .input(z.object({
-        key: z.string(),
-        data: z.string(), // base64
-        contentType: z.string().optional(),
+        key: z.string()
+          .regex(/^recordings\/[a-zA-Z0-9._/-]+$/)
+          .refine((key) => !key.includes("..") && !key.includes("//"), "Invalid recording key"),
+        data: z.string().min(1),
+        contentType: audioContentTypeSchema.optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        checkRateLimit(ctx.user.uid, "transcription-upload");
         const buffer = Buffer.from(input.data, "base64");
+        if (buffer.byteLength > MAX_AUDIO_UPLOAD_BYTES) {
+          throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Audio upload is too large" });
+        }
         const url = await uploadAudio(input.key, buffer, input.contentType);
         return { url };
       }),
-    transcribe: publicProcedure
+    transcribe: protectedProcedure
       .input(z.object({
         audioUrl: z.string().url(),
         language: z.string().optional(),
         prompt: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        checkRateLimit(ctx.user.uid, "transcription-transcribe");
         const result = await transcribeAudio(input);
         if ("error" in result) {
           throw new Error(`${result.error}: ${result.details || ""}`);
@@ -66,9 +142,9 @@ export const appRouter = router({
       }),
     getVault: protectedProcedure
       .input(z.object({ inviteCode: z.string().optional(), vaultId: z.string().optional() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
         if (input.inviteCode) return db.getVaultByInviteCode(input.inviteCode);
-        if (input.vaultId) return db.getVaultById(input.vaultId);
+        if (input.vaultId) return assertVaultMember(await db.getVaultById(input.vaultId), ctx.user.uid);
         return null;
       }),
 
@@ -93,16 +169,24 @@ export const appRouter = router({
 
     getMemories: protectedProcedure
       .input(z.object({ vaultId: z.string() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        assertVaultMember(await db.getVaultById(input.vaultId), ctx.user.uid);
         return db.getMemoriesByVault(input.vaultId);
       }),
 
     saveMemory: protectedProcedure
-      .input(z.any()) // Using any for now to match DbMemory type
+      .input(memoryInputSchema)
       .mutation(async ({ input, ctx }) => {
-        const memory = {
+        assertVaultMember(await db.getVaultById(input.vaultId), ctx.user.uid);
+        const existing = await db.getMemoryById(input.id);
+        if (existing && existing.vaultId !== input.vaultId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Memory belongs to a different vault" });
+        }
+
+        const memory: db.DbMemory = {
           ...input,
           uid: ctx.user.uid,
+          durationSeconds: input.durationSeconds ?? 0,
         };
         await db.saveMemory(memory);
         return { success: true };
@@ -110,7 +194,15 @@ export const appRouter = router({
 
     deleteMemory: protectedProcedure
       .input(z.object({ id: z.string() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const memory = await db.getMemoryById(input.id);
+        if (!memory) throw new TRPCError({ code: "NOT_FOUND", message: "Memory not found" });
+        const vault = assertVaultMember(await db.getVaultById(memory.vaultId), ctx.user.uid);
+        const canDelete = memory.uid === ctx.user.uid || vault.ownerUid === ctx.user.uid;
+        if (!canDelete) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner or recorder can delete this memory" });
+        }
+
         await db.deleteMemory(input.id);
         return { success: true };
       }),

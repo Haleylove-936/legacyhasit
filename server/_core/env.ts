@@ -1,3 +1,17 @@
+const DEV_ALLOWED_ORIGINS = [
+  "http://localhost:8081",
+  "http://127.0.0.1:8081",
+  "http://localhost:19006",
+  "http://127.0.0.1:19006",
+];
+
+function readList(name: string): string[] {
+  return (process.env[name] ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
 
@@ -38,4 +52,23 @@ export const ENV = {
 
   // Owner
   ownerUid: process.env.OWNER_UID ?? "",
+
+  // API access
+  allowedOrigins: readList("CORS_ORIGINS"),
 };
+
+export function getAllowedOrigins(): string[] {
+  return ENV.isProduction ? ENV.allowedOrigins : [...DEV_ALLOWED_ORIGINS, ...ENV.allowedOrigins];
+}
+
+export function validateServerEnv(): void {
+  const required = ["FIREBASE_PROJECT_ID", "FIREBASE_CLIENT_EMAIL", "FIREBASE_PRIVATE_KEY"];
+  const missing = required.filter((name) => !(process.env[name] ?? "").trim());
+
+  if (!missing.length) return;
+
+  const message = `Missing required server environment variables: ${missing.join(", ")}`;
+  if (ENV.isProduction) throw new Error(message);
+
+  console.warn(`[env] ${message}`);
+}

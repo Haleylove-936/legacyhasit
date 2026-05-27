@@ -21,13 +21,18 @@ export type DbMemory = {
   theme: string;
   promptId?: string;
   promptText?: string;
+  recordingType?: "audio" | "video" | "photo";
+  fileUri?: string;
   audioUrl?: string;
+  photoUri?: string | null;
   photoUrl?: string;
-  transcript?: string;
-  notes?: string;
+  transcript?: string | null;
+  notes?: string | null;
   durationSeconds: number;
   recordedBy: string;
+  recordedByMemberId?: string;
   createdAt: string;
+  comments?: unknown[];
 };
 
 export type DbVault = {
@@ -84,6 +89,11 @@ export async function getMemoriesByVault(vaultId: string): Promise<DbMemory[]> {
     .orderBy("createdAt", "desc")
     .get();
   return snap.docs.map((d) => d.data() as DbMemory);
+}
+
+export async function getMemoryById(id: string): Promise<DbMemory | null> {
+  const snap = await db().collection("memories").doc(id).get();
+  return snap.exists ? (snap.data() as DbMemory) : null;
 }
 
 export async function saveMemory(memory: DbMemory): Promise<void> {

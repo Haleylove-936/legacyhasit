@@ -39,7 +39,11 @@ export async function transcribeAudio(
     const base64 = await base64Promise;
 
     // 2. Upload to R2 via tRPC
-    const filename = `${Date.now()}-${title.replace(/\s+/g, '_').substring(0, 20)}.mp3`;
+    const safeTitle = title
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zA-Z0-9._-]/g, '')
+      .substring(0, 20);
+    const filename = `${Date.now()}-${safeTitle || 'recording'}.mp3`;
     const { url: audioUrl } = await trpc.transcription.upload.mutate({
       key: `recordings/${filename}`,
       data: base64,
