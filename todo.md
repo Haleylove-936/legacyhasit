@@ -1,4 +1,4 @@
-# LegacyBox TODO
+# ManyVersions TODO
 
 ## Setup & Configuration
 - [x] Update theme colors (warm walnut palette — amber #C8860A, walnut brown)

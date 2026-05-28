@@ -1,4 +1,4 @@
-// LegacyBox app-specific types
+// ManyVersions app-specific types
 
 export type MemoryTheme =
   | 'childhood'

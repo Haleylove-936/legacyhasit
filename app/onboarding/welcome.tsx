@@ -27,7 +27,7 @@ export default function WelcomeScreen() {
       <View style={styles.container}>
         {/* Hero */}
         <View style={styles.hero}>
-          <Text style={[styles.appName, { color: '#f4ebd8' }]}>LegacyBox</Text>
+          <Text style={[styles.appName, { color: '#f4ebd8' }]}>ManyVersions</Text>
           <Text style={[styles.tagline, { color: '#fdf6e3' }]}>
             Preserve the stories behind the photos.
           </Text>

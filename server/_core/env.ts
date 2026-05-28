@@ -30,6 +30,12 @@ export const ENV = {
   r2BucketName: process.env.R2_BUCKET_NAME ?? "",
   r2PublicUrl: process.env.R2_PUBLIC_URL ?? "", // your r2.dev or custom domain
 
+  // AWS S3
+  awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
+  awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
+  awsRegion: process.env.AWS_REGION ?? "",
+  awsS3BucketName: process.env.AWS_S3_BUCKET_NAME ?? "",
+
   // Groq (Whisper transcription)
   groqApiKey: process.env.GROQ_API_KEY ?? "",
 

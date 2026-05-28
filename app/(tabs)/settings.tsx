@@ -544,7 +544,7 @@ export default function SettingsScreen() {
 
         {/* App Info */}
         <Text style={[styles.appInfo, { color: colors.muted }]}>
-          LegacyBox · Preserve the stories behind the photos.
+          ManyVersions · Preserve the stories behind the photos.
         </Text>
       </ScrollView>
 
