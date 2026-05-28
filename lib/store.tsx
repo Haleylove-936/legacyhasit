@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useReducer } from 'react';
 import { AppState, Comment, FamilyMember, FamilyVault, Memory, UserRole } from '@/shared/app-types';
 
-const STORAGE_KEY = '@legacybox_state';
+const STORAGE_KEY = '@manyversions_state';
 
 const initialState: AppState = {
   hasOnboarded: false,

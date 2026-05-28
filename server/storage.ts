@@ -54,37 +54,61 @@ export async function uploadAudio(
   data: Buffer | Uint8Array,
   contentType = "audio/mpeg",
 ): Promise<string> {
-  if (!ENV.r2AccessKeyId || !ENV.r2SecretAccessKey || !ENV.r2BucketName) {
-    throw new Error("R2 config missing: set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME");
-  }
-
-  // Dynamic import so server starts without crashing if R2 not configured yet
   const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
 
-  const client = new S3Client({
-    region: "auto",
-    endpoint: r2Endpoint(),
-    credentials: {
-      accessKeyId: ENV.r2AccessKeyId,
-      secretAccessKey: ENV.r2SecretAccessKey,
-    },
-  });
+  // Prioritize AWS S3 if configured
+  if (ENV.awsAccessKeyId && ENV.awsSecretAccessKey && ENV.awsS3BucketName) {
+    const client = new S3Client({
+      region: ENV.awsRegion || "us-east-1",
+      credentials: {
+        accessKeyId: ENV.awsAccessKeyId,
+        secretAccessKey: ENV.awsSecretAccessKey,
+      },
+    });
 
-  await client.send(
-    new PutObjectCommand({
-      Bucket: ENV.r2BucketName,
-      Key: key,
-      Body: data,
-      ContentType: contentType,
-    }),
-  );
+    await client.send(
+      new PutObjectCommand({
+        Bucket: ENV.awsS3BucketName,
+        Key: key,
+        Body: data,
+        ContentType: contentType,
+      }),
+    );
 
-  // Return public URL (requires R2 public bucket or custom domain)
-  const base = ENV.r2PublicUrl || `${r2Endpoint()}/${ENV.r2BucketName}`;
-  return `${base.replace(/\/$/, "")}/${key}`;
+    return `https://${ENV.awsS3BucketName}.s3.${ENV.awsRegion || "us-east-1"}.amazonaws.com/${key}`;
+  }
+
+  // Fallback to Cloudflare R2
+  if (ENV.r2AccessKeyId && ENV.r2SecretAccessKey && ENV.r2BucketName) {
+    const client = new S3Client({
+      region: "auto",
+      endpoint: r2Endpoint(),
+      credentials: {
+        accessKeyId: ENV.r2AccessKeyId,
+        secretAccessKey: ENV.r2SecretAccessKey,
+      },
+    });
+
+    await client.send(
+      new PutObjectCommand({
+        Bucket: ENV.r2BucketName,
+        Key: key,
+        Body: data,
+        ContentType: contentType,
+      }),
+    );
+
+    const base = ENV.r2PublicUrl || `${r2Endpoint()}/${ENV.r2BucketName}`;
+    return `${base.replace(/\/$/, "")}/${key}`;
+  }
+
+  throw new Error("No audio storage (AWS or R2) configured.");
 }
 
 export async function getAudioUrl(key: string): Promise<string> {
+  if (ENV.awsAccessKeyId && ENV.awsS3BucketName) {
+    return `https://${ENV.awsS3BucketName}.s3.${ENV.awsRegion || "us-east-1"}.amazonaws.com/${key}`;
+  }
   const base = ENV.r2PublicUrl || `${r2Endpoint()}/${ENV.r2BucketName}`;
   return `${base.replace(/\/$/, "")}/${key}`;
 }

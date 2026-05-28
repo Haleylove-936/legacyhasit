@@ -3,7 +3,7 @@ import "./scripts/load-env.js";
 import type { ExpoConfig } from "expo/config";
 
 // Bundle ID format: space.manus.<project_name_dots>.<timestamp>
-const rawBundleId = "space.manus.legacybox.t20260502080118";
+const rawBundleId = "space.manus.manyversions.t20260502080118";
 const bundleId =
   rawBundleId
     .replace(/[-_]/g, ".")
@@ -21,8 +21,8 @@ const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
 const schemeFromBundleId = `manus${timestamp}`;
 
 const env = {
-  appName: "LegacyBox",
-  appSlug: "legacybox",
+  appName: "ManyVersions",
+  appSlug: "manyversions",
   logoUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663620448478/kispYccukCinDUf2vKutnP/icon-Apr5fSgzuuUCJREcDhzQtk.png",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
@@ -81,7 +81,7 @@ const config: ExpoConfig = {
     [
       "expo-audio",
       {
-        microphonePermission: "Allow LegacyBox to access your microphone to record family stories.",
+        microphonePermission: "Allow ManyVersions to access your microphone to record family stories.",
       },
     ],
     [
