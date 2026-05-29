@@ -65,7 +65,7 @@ async function startServer() {
   const port = await findAvailablePort(preferredPort);
   if (port !== preferredPort) console.log(`Port ${preferredPort} busy, using ${port}`);
 
-  server.listen(port, () => console.log(`[api] server listening on port ${port}`));
+  server.listen(port, "0.0.0.0", () => console.log(`[api] server listening on port ${port}`));
 }
 
 startServer().catch(console.error);
