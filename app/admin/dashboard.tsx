@@ -151,7 +151,7 @@ export default function AdminDashboard() {
                   <Text style={styles.avatarText}>{member.name[0]}</Text>
                 )}
               </View>
-              <View style={styles.memberInfo}>
+              <View style={styles.memoryInfo}>
                 <Text style={[styles.memberName, { color: colors.foreground }]}>{member.name}</Text>
                 <Text style={[styles.memberRole, { color: colors.muted }]}>
                   {member.role.charAt(0).toUpperCase() + member.role.slice(1)}

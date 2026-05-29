@@ -71,7 +71,7 @@ export function PhotoSlideshow({
       {/* Slideshow Display */}
       <Animated.View style={[styles.slideContainer, { opacity: fadeAnim }]}>
         <Image
-          source={{ uri: currentMemory.photoUri }}
+          source={{ uri: currentMemory.photoUri ?? undefined }}
           style={styles.slideImage}
           resizeMode="cover"
         />

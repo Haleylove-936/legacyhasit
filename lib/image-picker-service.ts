@@ -58,3 +58,11 @@ export async function recordVideo(): Promise<string | null> {
 export function hasPhoto(photoUri: string | null | undefined): boolean {
   return !!photoUri && photoUri.trim().length > 0;
 }
+
+/**
+ * Returns a thumbnail URI for a given image URI.
+ * Currently returns the same URI — can be extended to generate actual thumbnails.
+ */
+export function getThumbnailUri(uri: string): string {
+  return uri;
+}

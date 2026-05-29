@@ -45,7 +45,7 @@ export async function transcribeAudio(
 
   const ext = mimeType.includes("webm") ? "webm" : mimeType.includes("wav") ? "wav" : mimeType.includes("ogg") ? "ogg" : "mp3";
   const formData = new FormData();
-  formData.append("file", new Blob([audioBuffer], { type: mimeType }), `audio.${ext}`);
+  formData.append("file", new Blob([new Uint8Array(audioBuffer)], { type: mimeType }), `audio.${ext}`);
   formData.append("model", "whisper-large-v3-turbo"); // Groq's fastest Whisper model
   formData.append("response_format", "verbose_json");
   if (options.language) formData.append("language", options.language);

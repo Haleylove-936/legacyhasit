@@ -240,14 +240,17 @@ export async function sendPushNotification(notification: Notification): Promise<
   const { status } = await Notifications.getPermissionsAsync();
   if (status !== 'granted') return;
 
-  await Notifications.presentNotificationAsync({
-    title: notification.title,
-    body: notification.message,
-    data: { 
-      url: notification.actionUrl,
-      memoryId: notification.relatedMemoryId,
-      memberId: notification.relatedMemberId
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: notification.title,
+      body: notification.message,
+      data: { 
+        url: notification.actionUrl,
+        memoryId: notification.relatedMemoryId,
+        memberId: notification.relatedMemberId
+      },
     },
+    trigger: null,
   });
 }
 
@@ -269,6 +272,7 @@ export async function scheduleNotification(notification: Notification, delayMs: 
       },
     },
     trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds: Math.max(1, Math.floor(delayMs / 1000)),
     },
   });

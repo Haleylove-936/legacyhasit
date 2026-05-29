@@ -40,6 +40,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -108,12 +110,12 @@ export default function RootLayout() {
     const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
       const url = response.notification.request.content.data?.url;
       if (url) {
-        router.push(url);
+        router.push(url as never);
       }
     });
 
     return () => {
-      Notifications.removeNotificationSubscription(responseListener);
+      responseListener.remove();
     };
   }, []);
 

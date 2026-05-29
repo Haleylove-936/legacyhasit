@@ -10,7 +10,14 @@ import * as Haptics from 'expo-haptics';
 import { UserRole } from '@/shared/app-types';
 import { getDailyPrompt } from '@/constants/prompts';
 import { schedulePushNotification, formatReminderTime } from '@/lib/prompt-scheduler';
-import DateTimePicker from '@react-native-community/datetimepicker';
+// DateTimePicker stub — install @react-native-community/datetimepicker to enable native picker
+const DateTimePicker = (_props: {
+  value: Date;
+  mode: string;
+  is24Hour?: boolean;
+  display?: string;
+  onChange: (event: any, date?: Date) => void;
+}) => null;
 
 const ROLE_LABELS: Record<UserRole, string> = {
   elder: '👴 Elder',

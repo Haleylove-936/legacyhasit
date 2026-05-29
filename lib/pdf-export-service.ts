@@ -76,9 +76,9 @@ export function preparePDFExportData(
       date,
       recordedBy: memory.recordedBy ?? 'Family Member',
       duration,
-      transcript: includeTranscripts ? memory.transcript : undefined,
-      notes: includeNotes ? memory.notes : undefined,
-      photoUri: includePhotos ? memory.photoUri : undefined,
+      transcript: includeTranscripts ? (memory.transcript ?? undefined) : undefined,
+      notes: includeNotes ? (memory.notes ?? undefined) : undefined,
+      photoUri: includePhotos ? (memory.photoUri ?? undefined) : undefined,
     };
   });
 

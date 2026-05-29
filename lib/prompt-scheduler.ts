@@ -97,6 +97,7 @@ export async function schedulePushNotification(
       data: { url: '/record' },
     },
     trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
       hour: hours,
       minute: minutes,
       repeats: true,

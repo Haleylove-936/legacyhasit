@@ -15,7 +15,7 @@
  *     }]
  *   });
  */
-import { storagePut } from "../storage";
+import { uploadImage } from "../storage";
 import { ENV } from "./env";
 
 export type GenerateImageOptions = {
@@ -74,7 +74,7 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
   const buffer = Buffer.from(base64Data, "base64");
 
   // Save to S3
-  const { url } = await storagePut(`generated/${Date.now()}.png`, buffer, result.image.mimeType);
+  const url = await uploadImage(`generated/${Date.now()}.png`, buffer, result.image.mimeType);
   return {
     url,
   };
